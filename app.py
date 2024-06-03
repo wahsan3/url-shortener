@@ -28,45 +28,42 @@ def your_url():
             return redirect(url_for('home')) #redirect is a function provided by Flask that returns a response object that redirects the client to a target location. 'url_for('home')' generates a URL for the 'home' endpoint using Flask's 'url_for' function. The 'return redirect(url_for('home'))' sends a response back to the client that instructs the browser to navigate to the home page.
         
         #These lines handle the submission of form data, specifically dealing with two cases: submitting a URL or uploading a file. Depending on the contents of the form, the appropriate action is taken to store the data in the 'urls' dictionary or save the uploaded file to the server.
-        if 'url' in request.form.keys(): # 
-            urls[request.form['code']] = {'url':request.form['url']}
+        if 'url' in request.form.keys(): # request.form is a dictionary object from Flask that contains all the data submitted with a form. request.form.keys() returns a view object that displays all the keys in the request.form dictionary. 
+            urls[request.form['code']] = {'url':request.form['url']} #request.form['code'] retrieves the value of the form field named 'code,' which is the short code of the URL. request.form['url'] retrieves the value of the form field named 'url', which contains the actual URL to be stored. When they are set equal to one another, you are creating a new entry in the 'urls' dictionary.
         else:
-            f = request.files['file']
-            full_name = request.form['code'] + secure_filename(f.filename)
-            f.save('C:/Users/wahsa/OneDrive/Desktop/url-shortener/static/user_files/' + full_name)
-            urls[request.form['code']] = {'file':full_name}
+            f = request.files['file'] #request.files['file'] retrieves the uploaded file from the form. request.files is a dictionary object provided by Flask that contains all the files uploaded with the form. 
+            full_name = request.form['code'] + secure_filename(f.filename) #Generates a secure and unique filenae for the uploaded file. request.form['code'] retrieves the value of the form field named 'code'. secure_filename(f.filename) is a function from werkzeug.utils that sanitizes the filename to ensure it is safe and free of potentially harmful characters, which prevents issues like directory traversal attacks. The concatenation combines the short code with the sanitized original filename to create a unique filename.
+            f.save('C:/Users/wahsa/OneDrive/Desktop/url-shortener/static/user_files/' + full_name) #Saves the uploaded file to a specific directory on the server. This ensures the file is saved in the designated directory, making it accessible later.
+            urls[request.form['code']] = {'file':full_name} #Updates the 'urls' dictionary to include the uploaded file's information. Adds or updates the entry in the 'urls' dictionary with the short code as the key and the dictionary containing the filename as the value.
 
 
-        with open('urls.json', 'w') as url_file: #Only move forward if you're able successfully create or open this url.json with the name url_file. Whatever's inside the dictionary and save it there
-            json.dump(urls, url_file) #dump the dictionary urls into the url_file.
-            session[request.form['code']] = True 
-        return render_template('your_url.html', code=request.form['code'])
+        with open('urls.json', 'w') as url_file: #opens the file 'urls.json' in write mode ('w'). If the file does not exist, it will be created. If it does exist, its contents will be overwritten. 
+            json.dump(urls, url_file) #Writes the 'urls' dictionary to 'urls.json in JSON format. json.dump() is a function from the json module that serializes a Python object (in this case, the 'urls' dictionary) as a JSON formatted stream to a file-like object. This effectively writes the 'urls' dictionary to 'urls.json'.
+            session[request.form['code']] = True # Adds an entry to the session dictionary with the short code as the key and 'True' as the value. This can be used to keep track of which short codes the user has created during their session.
+        return render_template('your_url.html', code=request.form['code']) #render.template() is a Flask function that renders an HTML template. 'your_url.html' is the name of the template to render. code=request.form['code'] passes the short code to the template as a context variable named 'code', which allows the template to access and display the short code.
     else:
-        return redirect(url_for('home'))
+        return redirect(url_for('home')) #If the request method is not POST, redirect(url_for('home')) returns a response object that redirects the client to the 'home' endpoint using Flask's 'url_for()' function.
 
 #We can provide a url, give it a short name, and it will go to that url 
-@app.route('/<string:code>')
-def redirect_to_url(code): 
-    if os.path.exists('urls.json'):
-        with open('urls.json') as urls_file:
-            urls = json.load(urls_file)
-            if code in urls.keys():
-                if 'url' in urls[code].keys():
+@app.route('/<string:code>') #Defines a route in your Flask application that matches any URL path consisting of a single string after the root URL.
+def redirect_to_url(code): #Defines a function to handle the logic for redirecting based on the provided 'code'. 'code' is the variable part of the URL captured by the route.
+    if os.path.exists('urls.json'): #Returns 'True' if the file 'urls.json' exists.
+        with open('urls.json') as urls_file: #Opens the file in read mode. 
+            urls = json.load(urls_file) #Reads the JSON data from the file and converts it into a Python dictionary.
+            if code in urls.keys(): #This line checks if the 'code' parameter provided in the URL exists as a key in the urls dictionary. If the key exists the code inside this block is executed.
+                if 'url' in urls[code].keys(): #This line checks if the dictionary entry for the given 'code' contains a key named 'url.' The 'urls[code]' is itself a dictionary, and this line is verifying whether it has a 'url' key. If the 'url' key is present, it means the code maps to a URL.
                     return redirect(urls[code]["url"])
                 else:
-                   return redirect(url_for("static", filename = 'user_files/' + urls[code]['file'])) 
+                   return redirect(url_for("static", filename = 'user_files/' + urls[code]['file'])) #If the 'url' key is not found, it meansthe code maps to a file rather than a URL. 'urls[code]['file] retrieves the filename associated with the code. This generates a URL for the file located in the 'static/user_files/' directory within the Flask application.
 
     return abort(404)
 
-@app.errorhandler(404)
-def page_not_found(error):
-    return render_template('page_not_found.html'), 404
+@app.errorhandler(404) #This line is a decorator that tells Flask to execute the decorated function whenever a 404 (Not Found) error occurs. The '404' code is an HTTP status code indicating that the requested resource could not be found on the server.
+def page_not_found(error): #This defines the function 'page_not_found' that will handle the 404 error. This function accepts one parameter, 'error', which contains details about the error that triggered this handler.
+    return render_template('page_not_found.html'), 404 #This function call uses Flask's 'render_template' method to render an HTML template called 'page_not_found.html'. The second value '404' after the comma is the status code that should be sent back to the client along with the rendered template. 
 
-@app.route('/api')
+#A client will make a request to the '/api' endpoint. Flask calls the 'session_api' function to handle the request. The list of session keys is converted to JSON and returned to the client.
+@app.route('/api') #This line is a decorator that creates a route for the Flask application that tells Flask to execute the 'session_api' function whenever a request is made to the '/api' URL endpoint.
 def session_api():
-    return jsonify(list(session.keys()))
-    #jsonify - takes a list or dictionary and turns it into JSON code
-
-#Get request - All the data from the form is displayed inside the URL
-#Post request - takes the information and one can have access to it in the app.py file.
-
+    return jsonify(list(session.keys())) #'session.keys() is used to store data across requests for a particular user, and returns a view object that displays a list of all the keys in the session dictionary. jsonify is a function provided by Flask to create a JSON response from the given data.
+    
